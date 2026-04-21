@@ -1,0 +1,13 @@
+# Sensitive credentials
+.env
+*.log
+secrets.json
+
+# Folders/Dependencies
+node_modules/
+bin/
+obj/
+
+# OS generated files
+.DS_Store
+Thumbs.db

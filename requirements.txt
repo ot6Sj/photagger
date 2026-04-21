@@ -1,0 +1,6 @@
+watchdog==4.0.0
+PyQt6==6.7.1
+opencv-python==4.10.0.84
+torch
+torchvision
+pillow
