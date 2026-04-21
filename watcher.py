@@ -22,8 +22,14 @@ class NewPhotoHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
             return
-            
-        file_path = Path(event.src_path)
+        self.process_file(Path(event.src_path))
+
+    def on_moved(self, event):
+        if event.is_directory:
+            return
+        self.process_file(Path(event.dest_path))
+
+    def process_file(self, file_path):
         
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             return
@@ -174,8 +180,23 @@ class EngineWorker(QThread):
         self.observer.schedule(event_handler, str(drop_path), recursive=False)
         
         self.observer.start()
+        self.status_update.emit("PROCESSING EXISTING")
+        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] Core Started. Scanning for existing files in {self.drop_zone}...")
+        
+        # Retroactive Scan: Process files that were already in the folder
+        existing_files_found = 0
+        for item in drop_path.iterdir():
+            if not self.is_running:
+                break
+            if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
+                existing_files_found += 1
+                event_handler.process_file(item)
+                
+        if existing_files_found > 0:
+            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] Finished processing {existing_files_found} existing file(s).")
+            
         self.status_update.emit("WATCHING")
-        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] AI Loaded. Watcher active on {self.drop_zone}")
+        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] Live Watcher active. Waiting for new drops...")
         
         try:
             while self.is_running:
