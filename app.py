@@ -1,11 +1,17 @@
 import sys
 import os
+
+# ABSOLUTE TOP IMPORT: Force AI Engine DLLs to load into memory
+# before PyQt6 is even mentioned anywhere in the namespace!
+import onnxruntime
+
+from watcher import EngineWorker
+
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                 QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                                 QFileDialog, QTextEdit, QProgressBar, QFrame, QSizePolicy)
 from PyQt6.QtGui import QColor, QPalette, QPixmap, QFont
 from PyQt6.QtCore import Qt
-from watcher import EngineWorker
 
 class MainWindow(QMainWindow):
     def __init__(self):

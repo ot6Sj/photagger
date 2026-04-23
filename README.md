@@ -1,20 +1,20 @@
 # Smart Photography Culling Pipeline
 
-A robust, multi-threaded desktop application designed to evaluate, sort, and tag RAW/JPG photography captures autonomously using computer vision and deep learning models. 
+A robust, multi-threaded desktop application designed to automatically evaluate, sort, and tag RAW/JPG photography captures natively using computer vision and lightweight ONNX deep learning models.
 
 ## Architecture Overview
 
-The system is designed to entirely decouple the heavy computational overhead of neural networks from the graphical interface, maintaining a highly responsive user experience. 
+The system architecture cleanly decouples the heavy mathematical workload of neural networks from the graphical interface via native Windows threading, guaranteeing a highly responsive user experience footprint.
 
-1. **User Interface (PyQt6)**: Acts as the primary control dashboard spanning standard system threads. 
-2. **The Watcher (Watchdog & QThread)**: A background worker monitors a specified local `Drop Zone` directory for incoming assets. Threading and Inter-Process Communication (IPC) is achieved via `pyqtSignal`, safely piping computational output strings into the main UI log interface.
-3. **The Bouncer (OpenCV)**: Incoming files are evaluated for focus integrity via a Laplacian Variance check. Any file scoring below the mathematical variance threshold is flagged as blurry and moved to a `Rejected` directory to save classification time.
-4. **The Brain (PyTorch & ResNet50)**: In-focus photography is cast through a pre-trained ResNet50 Convolutional Neural Network forward pass (running on CUDA where available). Semantic probabilistic strings correspond to dominant image features.
-5. **The Bridge (XMP Generation)**: Successfully categorized images are transitioned to the standard `Processing` directory simultaneously with an Adobe Extensible Metadata Platform (`.xmp`) sidecar file. 
+1. **User Interface (PyQt6)**: Acts as the primary control dashboard operating strictly on standard system threads. 
+2. **The Watcher (Watchdog & QThread)**: A background worker monitors a specified local `Drop Zone` directory for incoming assets. Upon booting, this daemon performs a retroactive scan of all pre-existing files before idling into a live event-watch state. Inter-Process Communication (IPC) is achieved safely via `pyqtSignal`.
+3. **The Bouncer (OpenCV)**: Incoming files are passed through a Laplacian Variance focus-evaluation matrix. Any file identifying below the mathematical variance threshold is flagged as out-of-focus and immediately transferred to a `Rejected` directory to reserve compute time.
+4. **The Brain (ONNX Runtime)**: In-focus photography is processed using a pre-trained `MobileNetV2` exported ONNX graph. By prioritizing the ONNX Runtime stack over massive framework distributions (i.e., PyTorch/CUDA), it bypasses complex Visual C++ DLL redistributable mismatches (`WinError 1114`) natively executing across all hardware.
+5. **The Bridge (XMP Generation)**: Categorized targets are transitioned into the `Processing` directory simultaneously with a generated Adobe Extensible Metadata Platform (`.xmp`) sidecar file conveying its AI semantic keywords.
 
 ## Requirements
 
-Ensure Python 3.10+ is installed prior to setup. 
+Ensure Python 3.10+ is actively installed and running from an isolated virtual environment (`.venv`).
 
 ```bash
 pip install -r requirements.txt
@@ -24,8 +24,9 @@ pip install -r requirements.txt
 * `watchdog`: File system event monitoring
 * `PyQt6`: Desktop GUI Framework
 * `opencv-python`: Mathematical Laplace variance computations
-* `torch` / `torchvision`: ResNet classification
-* `Pillow`: Image pre-processing for tensors
+* `onnxruntime`: Neural network inference engine
+* `httpx`: Dynamic HTTP resource caching
+* `Pillow` / `numpy`: Matrix and dimensional image preprocessing
 
 ## Usage
 
@@ -33,8 +34,14 @@ pip install -r requirements.txt
 ```bash
 python app.py
 ```
-2. Designate a local **Drop Zone** path (where photographs will be aggregated from SD cards or external capture).
-3. Designate an **Output Zone** path (where categorized architecture will be migrated).
-4. Select **Start Engine** to initiate the background `QThread`. *Note: Initializing the ResNet50 framework natively caches required `.pth` weights to the local system on the first run cycle.*
-5. Drop un-sorted photographs into the assigned Drop Zone. The GUI matrix-log will detail the processing step evaluation for variance passing vs tagging logic in real-time. 
-6. Processed `.xmp` enabled directories can be natively dragged into photo editing frameworks (like Adobe Lightroom Classic) for immediate categorical synchronization.
+2. Designate a local **Drop Zone** path (where photographs will be aggregated from SD cards or external capture media).
+3. Designate an **Output Zone** path (the destination for successfully categorized asset architecture).
+4. Select **Start Engine** to engage the background `QThread`. *Note: Initializing the ONNX framework natively fetches required network binaries (`mobilenetv2-7.onnx` and string labels) from Microsoft repositories locally upon the very first run cycle.*
+5. Drop un-sorted photographs into the Drop Zone. The GUI matrix-log will detail the processing step evaluating for variance tolerance vs semantic tagging logic in real-time. 
+
+## Adobe Lightroom Synchronization
+
+Processed images inherently generate a `.xmp` file for programmatic ingest. To ensure Adobe Lightroom parses this metadata accurately:
+
+- **Raw Files (`.CR2`, `.NEF`, etc...)**: Simply drag the target output processing folder into Lightroom. The engine natively reads standard RAW `.xmp` formats automatically upon import.
+- **JPEG Files (`.jpg`)**: Lightroom assumes Metadata natively embeds within `.jpg` headers, therefore ignoring sidecar files by default. To capture the AI-generated keywords, highlight the imported JPEG photos within the Lightroom Library, right-click, select **"Metadata"**, and click **"Read Metadata from File"**.

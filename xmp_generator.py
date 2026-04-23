@@ -12,15 +12,21 @@ def generate_xmp(image_path, tags):
     bag_items = "\n".join([f"     <rdf:li>{tag}</rdf:li>" for tag in tags])
     
     xmp_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 7.0-c000">
  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
   <rdf:Description rdf:about=""
-    xmlns:dc="http://purl.org/dc/elements/1.1/">
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:lr="http://ns.adobe.com/lightroom/1.0/">
    <dc:subject>
     <rdf:Bag>
 {bag_items}
     </rdf:Bag>
    </dc:subject>
+   <lr:hierarchicalSubject>
+    <rdf:Bag>
+{bag_items}
+    </rdf:Bag>
+   </lr:hierarchicalSubject>
   </rdf:Description>
  </rdf:RDF>
 </x:xmpmeta>"""

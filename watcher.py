@@ -4,10 +4,11 @@ import shutil
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from PyQt6.QtCore import QThread, pyqtSignal
 
 from vision_engine import VisionEngine
 from xmp_generator import generate_xmp
+
+from PyQt6.QtCore import QThread, pyqtSignal
 
 SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.raw', '.raf', '.dng', '.heic', '.arw', '.cr2', '.cr3'}
 
