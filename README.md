@@ -74,26 +74,26 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   PyQt6 GUI (Main Thread)            │
+│                   PyQt6 GUI (Main Thread)           │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-│  │  Monitor  │  │ Gallery  │  │  Stats Dashboard  │  │
-│  │   Tab     │  │   Tab    │  │  Processed/Accept │  │
+│  │  Monitor │  │ Gallery  │  │  Stats Dashboard  │  │
+│  │   Tab    │  │   Tab    │  │  Processed/Accept │  │
 │  └──────────┘  └──────────┘  └───────────────────┘  │
 └───────────────────────┬─────────────────────────────┘
                         │ pyqtSignal (thread-safe IPC)
 ┌───────────────────────▼─────────────────────────────┐
-│              EngineWorker (QThread)                   │
-│                                                      │
+│              EngineWorker (QThread)                 │
+│                                                     │
 │  ┌─────────┐   ┌──────────┐   ┌──────────────────┐  │
-│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)   │  │
+│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)  │  │
 │  │Observer │   │OpenCV    │   │  MobileNetV2     │  │
 │  │         │   │Blur+Exp  │   │  + SmartSorter   │  │
 │  └─────────┘   └──────────┘   └──────────────────┘  │
-│                                        │             │
-│                              ┌─────────▼──────────┐  │
-│                              │  XMP + Move + DB   │  │
-│                              └────────────────────┘  │
-└──────────────────────────────────────────────────────┘
+│                                       │          v  │
+│                             ┌─────────▼──────────┐  │
+│                             │  XMP + Move + DB   │  │
+│                             └────────────────────┘  │
+└─────────────────────────────────────────────────────┘
 ```
 
 **Key design decisions:**
