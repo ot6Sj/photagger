@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">📸 Photagger</h1>
+  <h1 align="center"> Photagger</h1>
   <p align="center">
     <strong>AI-Powered Photography Culling & Tagging Pipeline</strong>
   </p>
