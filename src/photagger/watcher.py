@@ -56,13 +56,13 @@ class NewPhotoHandler(FileSystemEventHandler):
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             return
 
-        self._log(f"📷 Detected: {file_path.name}")
-        self._log(f"⏳ Waiting for file transfer to complete...")
+        self._log(f"[DETECT] {file_path.name}")
+        self._log(f"[WAIT] File transfer in progress...")
         self.signals.progress_update.emit(5)
         self.signals.stage_update.emit("Waiting for file transfer...")
 
         if not self.wait_for_file_transfer(file_path):
-            self._log(f"⚠️ File transfer timed out: {file_path.name}")
+            self._log(f"[WARN] File transfer timed out: {file_path.name}")
             return
 
         self.signals.progress_update.emit(15)
@@ -73,18 +73,18 @@ class NewPhotoHandler(FileSystemEventHandler):
         exif = extract_exif(file_path)
         exif_summary = format_exif_summary(exif)
         if exif_summary != "No EXIF data":
-            self._log(f"📋 EXIF: {exif_summary}")
+            self._log(f"[EXIF] {exif_summary}")
         self.signals.exif_update.emit(exif)
         self.signals.progress_update.emit(25)
 
         # ─── Blur Detection ──────────────────────────────────
         self.signals.stage_update.emit("Analyzing focus quality...")
-        self._log(f"🔍 Analyzing focus (Laplacian variance)...")
+        self._log(f"[FOCUS] Analyzing Laplacian variance...")
         is_blur, var_score = self.ai.is_blurry(file_path)
         self.signals.progress_update.emit(40)
 
         if is_blur:
-            self._log(f"❌ Variance {var_score:.1f} → REJECTED (Blurry)")
+            self._log(f"[REJECT] Variance {var_score:.1f} — Blurry")
             target = self._move_to_rejected(file_path)
             self.history.log_processed(
                 filename=file_path.name, original_path=str(file_path),
@@ -95,31 +95,41 @@ class NewPhotoHandler(FileSystemEventHandler):
                 session_id=self.session_id
             )
             self.signals.stats_update.emit("rejected")
+            self.signals.gallery_entry.emit({
+                "filename": file_path.name,
+                "final_path": str(target) if target else "",
+                "status": "rejected",
+                "category": "rejected",
+                "star_rating": 0,
+                "tags": "",
+                "blur_score": var_score,
+                "exposure_score": 0,
+            })
             self.signals.progress_update.emit(0)
             self.signals.stage_update.emit("")
             return
 
-        self._log(f"✅ Variance {var_score:.1f} → PASSED")
+        self._log(f"[PASS] Variance {var_score:.1f} — Sharp")
 
         # ─── Exposure Analysis ───────────────────────────────
         self.signals.stage_update.emit("Evaluating exposure quality...")
-        self._log(f"📊 Analyzing exposure histogram...")
+        self._log(f"[EXPOSURE] Analyzing histogram...")
         exposure = analyze_exposure(file_path)
-        self._log(f"📊 Exposure: {exposure.score:.0f}/100 ({exposure.verdict}) "
+        self._log(f"[EXPOSURE] Score: {exposure.score:.0f}/100 ({exposure.verdict}) "
                   f"| Highlights: {exposure.highlights_clipped}% | Shadows: {exposure.shadows_clipped}%")
         self.signals.progress_update.emit(55)
 
         # ─── AI Semantic Tagging ─────────────────────────────
         self.signals.stage_update.emit("Extracting semantic tags...")
-        self._log(f"🧠 MobileNetV2: Extracting semantics...")
+        self._log(f"[AI] MobileNetV2 inference...")
         raw_tags = self.ai.get_tags(file_path, top_k=self.top_k)
-        self._log(f"🏷️ Raw tags: {', '.join(raw_tags)}")
+        self._log(f"[TAGS] {', '.join(raw_tags)}")
         self.signals.progress_update.emit(75)
 
         # ─── Category Classification ────────────────────────
         self.signals.stage_update.emit("Classifying category...")
         category, enriched_tags = classify_tags(raw_tags)
-        self._log(f"📁 Category: {category.capitalize()} | Tags: {', '.join(enriched_tags)}")
+        self._log(f"[SORT] Category: {category.capitalize()} | Tags: {', '.join(enriched_tags)}")
         self.signals.tags_update.emit(enriched_tags)
         self.signals.progress_update.emit(85)
 
@@ -138,7 +148,7 @@ class NewPhotoHandler(FileSystemEventHandler):
                 label="Green" if exposure.score >= 70 else "",
                 exif_description=exif_summary,
             )
-            self._log(f"📝 XMP sidecar generated with {exposure.rating}★ rating")
+            self._log(f"[XMP] Sidecar generated — {exposure.rating} star rating")
 
         self.signals.progress_update.emit(95)
 
@@ -153,8 +163,18 @@ class NewPhotoHandler(FileSystemEventHandler):
             session_id=self.session_id
         )
         self.signals.stats_update.emit("accepted")
+        self.signals.gallery_entry.emit({
+            "filename": file_path.name,
+            "final_path": target_path or "",
+            "status": "accepted",
+            "category": category,
+            "star_rating": exposure.rating,
+            "tags": ",".join(enriched_tags),
+            "blur_score": var_score,
+            "exposure_score": exposure.score,
+        })
 
-        self._log(f"✨ Processing complete: {file_path.name}")
+        self._log(f"Processing complete: {file_path.name}")
         self.signals.progress_update.emit(100)
         time.sleep(0.3)
         self.signals.progress_update.emit(0)
@@ -182,7 +202,7 @@ class NewPhotoHandler(FileSystemEventHandler):
                 pass
             time.sleep(1)
 
-        self._log(f"⚠️ Timeout waiting for: {file_path.name}")
+        self._log(f"[WARN] Timeout waiting for: {file_path.name}")
         return False
 
     def _move_to_rejected(self, file_path: Path) -> str | None:
@@ -195,17 +215,17 @@ class NewPhotoHandler(FileSystemEventHandler):
         for attempt in range(3):
             try:
                 shutil.move(str(file_path), str(target_path))
-                self._log(f"📦 Moved → {target_path.parent.name}/{target_path.name}")
+                self._log(f"[MOVE] {target_path.parent.name}/{target_path.name}")
                 return str(target_path)
             except PermissionError:
                 if attempt < 2:
                     log.warning(f"File locked, retry {attempt + 1}/3: {file_path.name}")
                     time.sleep(1)
                 else:
-                    self._log(f"❌ Failed to move (file locked): {file_path.name}")
+                    self._log(f"[ERROR] Failed to move (file locked): {file_path.name}")
                     return None
             except Exception as e:
-                self._log(f"❌ Failed to move {file_path.name}: {e}")
+                self._log(f"[ERROR] Failed to move {file_path.name}: {e}")
                 return None
 
     def _avoid_collision(self, dir_path: Path, file_path: Path) -> Path:
@@ -234,6 +254,7 @@ class EngineWorker(QThread):
     stats_update = pyqtSignal(str)     # "accepted" or "rejected"
     tags_update = pyqtSignal(list)     # enriched tag list
     exif_update = pyqtSignal(dict)     # EXIF data dict
+    gallery_entry = pyqtSignal(dict)   # full entry for gallery display
 
     def __init__(self, drop_zone: str, processing_zone: str, rejected_zone: str,
                  blur_threshold: float = DEFAULT_BLUR_THRESHOLD,
@@ -250,7 +271,7 @@ class EngineWorker(QThread):
 
     def run(self):
         self.status_update.emit("BOOTING")
-        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] 🚀 Initializing AI engine...")
+        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [BOOT] Initializing AI engine...")
 
         # Progress callback for model downloads
         def on_progress(msg):
@@ -262,12 +283,12 @@ class EngineWorker(QThread):
                 progress_callback=on_progress
             )
         except Exception as e:
-            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] ❌ FATAL AI ERROR: {e}")
+            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [FATAL] AI engine error: {e}")
             self.status_update.emit("IDLE")
             return
 
         if not ai_engine.is_ready:
-            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] ⚠️ AI engine loaded in degraded mode (tagging disabled)")
+            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [WARN] AI engine in degraded mode (tagging disabled)")
 
         # Initialize history database
         history = HistoryDB()
@@ -290,7 +311,7 @@ class EngineWorker(QThread):
         self.observer.start()
 
         self.status_update.emit("SCANNING")
-        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] 📂 Scanning existing files in {self.drop_zone}...")
+        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [SCAN] Scanning existing files in {self.drop_zone}...")
 
         # Retroactive scan
         existing = 0
@@ -302,10 +323,10 @@ class EngineWorker(QThread):
                 handler.process_file(item)
 
         if existing > 0:
-            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] ✅ Processed {existing} existing file(s)")
+            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [DONE] Processed {existing} existing file(s)")
 
         self.status_update.emit("WATCHING")
-        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] 👁️ Live watcher active. Waiting for new drops...")
+        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [WATCH] Live watcher active. Waiting for new drops...")
 
         # Wait loop — using threading.Event for thread-safe shutdown
         while not self._stop_event.wait(timeout=1.0):
@@ -323,7 +344,7 @@ class EngineWorker(QThread):
             pass
 
         self.status_update.emit("IDLE")
-        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] 🛑 Engine stopped.")
+        self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [STOP] Engine stopped.")
 
     def stop(self):
         """Thread-safe stop signal."""

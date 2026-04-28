@@ -26,6 +26,7 @@ from .history_db import HistoryDB
 from .session_report import generate_html_report, generate_csv_report
 from .exif_reader import format_exif_summary
 from .logger import setup_logging, get_logger
+from . import icons
 
 log = get_logger("app")
 
@@ -80,7 +81,7 @@ class SettingsDialog(QDialog):
         layout.setSpacing(16)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        title = QLabel("⚙️ Processing Settings")
+        title = QLabel("  Processing Settings")
         title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: 18px; font-weight: 700;")
         layout.addWidget(title)
 
@@ -300,7 +301,7 @@ class MainWindow(QMainWindow):
 
         # ── Header ──
         header = QHBoxLayout()
-        brand = QLabel(f"📸 {APP_NAME}")
+        brand = QLabel(f"  {APP_NAME}")
         brand.setStyleSheet(f"color: {Colors.ACCENT}; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;")
         header.addWidget(brand)
 
@@ -309,11 +310,13 @@ class MainWindow(QMainWindow):
         header.addWidget(version)
         header.addStretch()
 
-        self.settings_btn = QPushButton("⚙️ Settings")
+        self.settings_btn = QPushButton("  Settings")
+        self.settings_btn.setIcon(icons.icon_gear(18, Colors.TEXT_SECONDARY))
         self.settings_btn.clicked.connect(self._open_settings)
         header.addWidget(self.settings_btn)
 
-        self.report_btn = QPushButton("📊 Report")
+        self.report_btn = QPushButton("  Report")
+        self.report_btn.setIcon(icons.icon_chart(18, Colors.TEXT_SECONDARY))
         self.report_btn.clicked.connect(self._generate_report)
         self.report_btn.setEnabled(False)
         header.addWidget(self.report_btn)
@@ -334,7 +337,9 @@ class MainWindow(QMainWindow):
         ctrl = QHBoxLayout()
         ctrl.setSpacing(8)
 
-        ctrl.addWidget(QLabel("📂 Drop Zone:"))
+        drop_lbl = QLabel("  Drop Zone:")
+        drop_lbl.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-weight: 500;")
+        ctrl.addWidget(drop_lbl)
         self.drop_input = QLineEdit()
         self.drop_input.setPlaceholderText("Select folder to watch for new photos...")
         ctrl.addWidget(self.drop_input, stretch=1)
@@ -342,7 +347,9 @@ class MainWindow(QMainWindow):
         drop_btn.clicked.connect(lambda: self._browse(self.drop_input))
         ctrl.addWidget(drop_btn)
 
-        ctrl.addWidget(QLabel("📁 Output:"))
+        out_lbl = QLabel("  Output:")
+        out_lbl.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-weight: 500;")
+        ctrl.addWidget(out_lbl)
         self.out_input = QLineEdit()
         self.out_input.setPlaceholderText("Select output folder for processed photos...")
         ctrl.addWidget(self.out_input, stretch=1)
@@ -350,7 +357,8 @@ class MainWindow(QMainWindow):
         out_btn.clicked.connect(lambda: self._browse(self.out_input))
         ctrl.addWidget(out_btn)
 
-        self.engine_btn = QPushButton("▶  Start Engine")
+        self.engine_btn = QPushButton("  Start Engine")
+        self.engine_btn.setIcon(icons.icon_play(18, Colors.TEXT_PRIMARY))
         self.engine_btn.setCheckable(True)
         self.engine_btn.setStyleSheet(f"""
             QPushButton {{
@@ -404,7 +412,7 @@ class MainWindow(QMainWindow):
         right_panel = QVBoxLayout()
         right_panel.setSpacing(8)
 
-        self.thumbnail_label = QLabel("📷")
+        self.thumbnail_label = QLabel("No Image")
         self.thumbnail_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.thumbnail_label.setFixedSize(280, 220)
         self.thumbnail_label.setStyleSheet(f"""
@@ -412,7 +420,7 @@ class MainWindow(QMainWindow):
             border: 1px solid {Colors.BORDER};
             border-radius: 8px;
             color: {Colors.TEXT_DIM};
-            font-size: 48px;
+            font-size: 13px;
         """)
         right_panel.addWidget(self.thumbnail_label)
 
@@ -447,12 +455,14 @@ class MainWindow(QMainWindow):
         right_panel.addStretch()
 
         mon_layout.addLayout(right_panel)
-        self.tabs.addTab(monitor_tab, "🖥️ Monitor")
+        self.tabs.addTab(monitor_tab, "  Monitor")
+        self.tabs.setTabIcon(0, icons.icon_monitor(16, Colors.TEXT_SECONDARY))
 
         # Tab 2: Gallery
         self.gallery = GalleryWidget()
         self.gallery.card_selected.connect(self._on_gallery_select)
-        self.tabs.addTab(self.gallery, "🖼️ Gallery")
+        self.tabs.addTab(self.gallery, "  Gallery")
+        self.tabs.setTabIcon(1, icons.icon_grid(16, Colors.TEXT_SECONDARY))
 
         # ── Status bar ──
         self.status_label = QLabel("Status: IDLE")
@@ -499,10 +509,11 @@ class MainWindow(QMainWindow):
             out = self.out_input.text().strip()
             if not drop or not out:
                 self.engine_btn.setChecked(False)
-                self._append_log(f"[{time.strftime('%H:%M:%S')}] ⚠️ Please set Drop Zone and Output paths first!")
+                self._append_log(f"[{time.strftime('%H:%M:%S')}] [WARN] Please set Drop Zone and Output paths first!")
                 return
 
-            self.engine_btn.setText("⏹  Stop Engine")
+            self.engine_btn.setText("  Stop Engine")
+            self.engine_btn.setIcon(icons.icon_stop(18, Colors.TEXT_PRIMARY))
             self._stats = {"processed": 0, "accepted": 0, "rejected": 0}
 
             rej = self.config.rejected_zone or os.path.join(out, "_Rejected")
@@ -521,12 +532,14 @@ class MainWindow(QMainWindow):
             self.worker.stats_update.connect(self._update_stats)
             self.worker.tags_update.connect(self._update_tags)
             self.worker.exif_update.connect(self._update_exif)
+            self.worker.gallery_entry.connect(self._add_gallery_entry)
             self.worker.start()
             self.report_btn.setEnabled(True)
         else:
-            self.engine_btn.setText("▶  Start Engine")
+            self.engine_btn.setText("  Start Engine")
+            self.engine_btn.setIcon(icons.icon_play(18, Colors.TEXT_PRIMARY))
             if self.worker:
-                self._append_log(f"[{time.strftime('%H:%M:%S')}] 🛑 Shutting down engine...")
+                self._append_log(f"[{time.strftime('%H:%M:%S')}] [STOP] Shutting down engine...")
                 self.worker.stop()
                 self.worker.wait(5000)
                 self.worker = None
@@ -555,7 +568,7 @@ class MainWindow(QMainWindow):
             )
             self.thumbnail_label.setPixmap(pixmap)
         else:
-            self.thumbnail_label.setText("⚠️")
+            self.thumbnail_label.setText("Preview unavailable")
 
     def _update_stats(self, status: str):
         self._stats["processed"] += 1
@@ -564,20 +577,13 @@ class MainWindow(QMainWindow):
         self.stat_accepted.set_value(self._stats["accepted"])
         self.stat_rejected.set_value(self._stats["rejected"])
 
-        # Add to gallery
-        # We'll reconstruct a minimal entry for the gallery from available info
-        self.gallery.add_entry({
-            "filename": self._last_filename if hasattr(self, '_last_filename') else "unknown",
-            "status": status,
-            "final_path": self._last_final_path if hasattr(self, '_last_final_path') else "",
-            "category": self._last_category if hasattr(self, '_last_category') else "",
-            "star_rating": self._last_rating if hasattr(self, '_last_rating') else 0,
-        })
+    def _add_gallery_entry(self, entry: dict):
+        """Add a fully-formed entry dict from the watcher to the gallery."""
+        self.gallery.add_entry(entry)
 
     def _update_tags(self, tags: list):
         if tags:
-            self._last_category = tags[0] if tags else ""
-            tag_badges = "  ".join([f"🏷️ {t}" for t in tags])
+            tag_badges = "  |  ".join(tags)
             self.tags_label.setText(tag_badges)
         else:
             self.tags_label.setText("No tags")
@@ -585,17 +591,17 @@ class MainWindow(QMainWindow):
     def _update_exif(self, exif: dict):
         parts = []
         if exif.get("camera"):
-            parts.append(f"📷 {exif['camera']}")
+            parts.append(f"Camera:  {exif['camera']}")
         if exif.get("focal_length"):
-            parts.append(f"🔭 {exif['focal_length']}")
+            parts.append(f"Focal:  {exif['focal_length']}")
         if exif.get("aperture"):
-            parts.append(f"⬡ {exif['aperture']}")
+            parts.append(f"Aperture:  {exif['aperture']}")
         if exif.get("shutter_speed"):
-            parts.append(f"⏱️ {exif['shutter_speed']}")
+            parts.append(f"Shutter:  {exif['shutter_speed']}")
         if exif.get("iso"):
-            parts.append(f"ISO {exif['iso']}")
+            parts.append(f"ISO:  {exif['iso']}")
         if exif.get("width") and exif.get("height"):
-            parts.append(f"📐 {exif['width']}×{exif['height']}")
+            parts.append(f"Size:  {exif['width']}x{exif['height']}")
         self.exif_label.setText("\n".join(parts) if parts else "No EXIF data")
 
     def _on_gallery_select(self, entry: dict):
@@ -610,7 +616,7 @@ class MainWindow(QMainWindow):
             history = HistoryDB()
             entries = history.get_recent_entries(500)
             if not entries:
-                self._append_log(f"[{time.strftime('%H:%M:%S')}] ⚠️ No processing history to report on.")
+                self._append_log(f"[{time.strftime('%H:%M:%S')}] [WARN] No processing history to report on.")
                 return
 
             out_dir = self.out_input.text() or os.getcwd()
@@ -628,13 +634,13 @@ class MainWindow(QMainWindow):
                     stats["categories"][cat] = stats["categories"].get(cat, 0) + 1
 
             report_path = generate_html_report(stats, entries, out_dir)
-            self._append_log(f"[{time.strftime('%H:%M:%S')}] 📊 Report saved: {report_path}")
+            self._append_log(f"[{time.strftime('%H:%M:%S')}] [REPORT] Saved: {report_path}")
 
             from PyQt6.QtGui import QDesktopServices
             from PyQt6.QtCore import QUrl
             QDesktopServices.openUrl(QUrl.fromLocalFile(report_path))
         except Exception as e:
-            self._append_log(f"[{time.strftime('%H:%M:%S')}] ❌ Report generation failed: {e}")
+            self._append_log(f"[{time.strftime('%H:%M:%S')}] [ERROR] Report generation failed: {e}")
 
     # ─── Drag & Drop ─────────────────────────────────────────
     def dragEnterEvent(self, event: QDragEnterEvent):
@@ -644,7 +650,7 @@ class MainWindow(QMainWindow):
     def dropEvent(self, event: QDropEvent):
         drop_dir = self.drop_input.text().strip()
         if not drop_dir:
-            self._append_log(f"[{time.strftime('%H:%M:%S')}] ⚠️ Set a Drop Zone first!")
+            self._append_log(f"[{time.strftime('%H:%M:%S')}] [WARN] Set a Drop Zone first!")
             return
         import shutil
         from pathlib import Path
@@ -655,6 +661,6 @@ class MainWindow(QMainWindow):
                 dst = os.path.join(drop_dir, os.path.basename(src))
                 try:
                     shutil.copy2(src, dst)
-                    self._append_log(f"[{time.strftime('%H:%M:%S')}] 📥 Dropped: {os.path.basename(src)}")
+                    self._append_log(f"[{time.strftime('%H:%M:%S')}] [DROP] {os.path.basename(src)}")
                 except Exception as e:
-                    self._append_log(f"[{time.strftime('%H:%M:%S')}] ❌ Drop failed: {e}")
+                    self._append_log(f"[{time.strftime('%H:%M:%S')}] [ERROR] Drop failed: {e}")

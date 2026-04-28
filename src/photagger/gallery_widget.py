@@ -56,9 +56,11 @@ class ThumbnailCard(QFrame):
                                        Qt.TransformationMode.SmoothTransformation)
                 self.img_label.setPixmap(pixmap)
             else:
-                self.img_label.setText("⚠️")
+                self.img_label.setText("!")
+                self.img_label.setStyleSheet(f"background: {Colors.THUMBNAIL_BG}; border-radius: 4px; color: {Colors.WARNING}; font-size: 16px; font-weight: 700;")
         else:
-            self.img_label.setText("📷")
+            self.img_label.setText("No preview")
+            self.img_label.setStyleSheet(f"background: {Colors.THUMBNAIL_BG}; border-radius: 4px; color: {Colors.TEXT_DIM}; font-size: 11px;")
 
         layout.addWidget(self.img_label)
 
@@ -71,7 +73,8 @@ class ThumbnailCard(QFrame):
         # Category + rating
         cat = entry.get("category", "")
         rating = entry.get("star_rating", 0)
-        info_label = QLabel(f"{cat.capitalize()} · {'⭐' * rating}")
+        stars = '\u2605' * rating + '\u2606' * (5 - rating)  # filled/empty stars
+        info_label = QLabel(f"{cat.capitalize()}  {stars}" if cat else stars)
         info_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 10px;")
         info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(info_label)
@@ -181,9 +184,9 @@ class GalleryWidget(QWidget):
         accepted = sum(1 for e in self._entries if e.get("status") == "accepted")
         rejected = sum(1 for e in self._entries if e.get("status") == "rejected")
         self.count_label.setText(
-            f"📷 {len(self._entries)} images  ·  "
-            f"✅ {accepted} accepted  ·  "
-            f"❌ {rejected} rejected"
+            f"{len(self._entries)} images  |  "
+            f"{accepted} accepted  |  "
+            f"{rejected} rejected"
         )
 
     def load_from_history(self, entries: list[dict]):
