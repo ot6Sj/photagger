@@ -18,7 +18,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-## 🎯 Why Photagger?
+##  Why Photagger?
 
 | Problem | Solution |
 |---------|----------|
@@ -29,9 +29,9 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🔬 Core Pipeline
+###  Core Pipeline
 
 | Stage | What It Does | Technology |
 |-------|-------------|------------|
@@ -41,7 +41,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 | **Category Mapping** | Translates ImageNet labels → photographer-friendly terms | Custom JSON mapping |
 | **XMP Generation** | Writes keywords + star ratings to Lightroom-compatible sidecar files | Adobe XMP |
 
-### 📁 Smart Organization
+###  Smart Organization
 
 - **Auto-Categorization** — Photos are sorted into subfolders based on AI classification:
   ```
@@ -58,7 +58,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 - **EXIF Extraction** — Reads camera model, lens, focal length, ISO, aperture, shutter speed, and GPS coordinates
 - **Quality Ratings** — Auto-assigns 1-5★ based on combined focus sharpness + exposure quality
 
-### 🛠️ Professional Tools
+###  Professional Tools
 
 | Tool | Description |
 |------|-------------|
@@ -70,7 +70,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -104,7 +104,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -142,15 +142,15 @@ python -m photagger
 
 ### Usage
 
-1. **📂 Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
-2. **📁 Set Output** — Select the destination for successfully processed & categorized photos
-3. **▶️ Start Engine** — Click to engage the background watcher
-4. **📷 Drop photos** — Copy files into the Drop Zone, or drag & drop directly onto the app
-5. **🖼️ Review** — Switch to the Gallery tab, inspect results, generate reports
+1. ** Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
+2. ** Set Output** — Select the destination for successfully processed & categorized photos
+3. ** Start Engine** — Click to engage the background watcher
+4. ** Drop photos** — Copy files into the Drop Zone, or drag & drop directly onto the app
+5. ** Review** — Switch to the Gallery tab, inspect results, generate reports
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 photagger/
@@ -186,7 +186,7 @@ photagger/
 
 ---
 
-## 🎯 Adobe Lightroom Integration
+##  Adobe Lightroom Integration
 
 Photagger generates `.xmp` sidecar files containing AI-generated keywords and quality star ratings. These files are natively compatible with Adobe Lightroom and Bridge.
 
@@ -218,7 +218,7 @@ xmp:Label="Green"
 
 ---
 
-## 🧪 Running Tests
+##  Running Tests
 
 ```bash
 # Activate venv
@@ -237,7 +237,7 @@ All **18 tests** cover:
 
 ---
 
-## ⚙️ Configuration
+##  Configuration
 
 Settings are persisted automatically via `QSettings` (Windows Registry). Configurable options:
 
@@ -248,11 +248,11 @@ Settings are persisted automatically via `QSettings` (Windows Registry). Configu
 | Auto-Categorize | `On` | Sort into category subfolders |
 | Exposure Reject | `Off` | Auto-reject badly exposed images |
 
-Access via the **⚙️ Settings** button in the app header.
+Access via the ** Settings** button in the app header.
 
 ---
 
-## 📦 Supported Formats
+##  Supported Formats
 
 **Image formats:** `.jpg` `.jpeg` `.png` `.tif` `.tiff` `.bmp`
 
@@ -260,7 +260,7 @@ Access via the **⚙️ Settings** button in the app header.
 
 ---
 
-## 🗂️ Data Storage
+##  Data Storage
 
 | Data | Location |
 |------|----------|
@@ -271,6 +271,6 @@ Access via the **⚙️ Settings** button in the app header.
 
 ---
 
-## 📜 License
+##  License
 
 This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
