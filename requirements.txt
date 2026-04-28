@@ -1,7 +1,7 @@
 watchdog==4.0.0
 PyQt6==6.7.1
 opencv-python==4.10.0.84
-pillow
-onnxruntime
-httpx
-numpy
+Pillow==10.4.0
+onnxruntime==1.18.1
+httpx==0.27.0
+numpy==1.26.4

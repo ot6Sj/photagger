@@ -1,19 +1,43 @@
-# Sensitive credentials
-.env
-.venv
-.dist
-.git
+# Virtual environment
+.venv/
+venv/
+
+# Distribution / Build
+.dist/
+dist/
+build/
+*.egg-info/
+*.spec
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
 *.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets
+.env
 secrets.json
 
-# Folders/Dependencies
-node_modules/
-bin/
-obj/
-
-# OS generated files
+# OS
 .DS_Store
 Thumbs.db
-Processing
-Drop_Zone
-Rejected_Blurry
+
+# App working directories
+Processing/
+Drop_Zone/
+Rejected_Blurry/
+
+# ONNX model (downloaded at runtime)
+mobilenetv2-7.onnx
+
+# Git internals
+.git/
