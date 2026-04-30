@@ -12,15 +12,16 @@ log = get_logger("exposure")
 
 class ExposureResult:
     """Container for exposure analysis results."""
-    __slots__ = ("score", "rating", "verdict", "highlights_clipped", "shadows_clipped")
+    __slots__ = ("score", "rating", "verdict", "highlights_clipped", "shadows_clipped", "noise_estimate")
 
     def __init__(self, score: float, rating: int, verdict: str,
-                 highlights_clipped: float, shadows_clipped: float):
+                 highlights_clipped: float, shadows_clipped: float, noise_estimate: float = 0.0):
         self.score = score
         self.rating = rating
         self.verdict = verdict
         self.highlights_clipped = highlights_clipped
         self.shadows_clipped = shadows_clipped
+        self.noise_estimate = noise_estimate
 
     def __repr__(self):
         return f"ExposureResult(score={self.score:.1f}, rating={self.rating}★, verdict='{self.verdict}')"
@@ -40,7 +41,7 @@ def analyze_exposure(image_path: str | Path, reject_threshold: float = 15.0) -> 
     try:
         img = cv2.imread(str(image_path))
         if img is None:
-            return ExposureResult(50.0, 3, "unreadable", 0.0, 0.0)
+            return ExposureResult(50.0, 3, "unreadable", 0.0, 0.0, 0.0)
 
         # Convert to grayscale for luminance analysis
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -61,6 +62,14 @@ def analyze_exposure(image_path: str | Path, reject_threshold: float = 15.0) -> 
         # Calculate standard deviation of the histogram (spread)
         variance = np.average((np.arange(256) - brightness) ** 2, weights=hist)
         std_dev = np.sqrt(variance)
+        
+        # Noise Estimation (Fast Median filter difference)
+        # Using a small center crop for speed
+        h, w = gray.shape
+        crop = gray[h//4:3*h//4, w//4:3*w//4]
+        blurred = cv2.medianBlur(crop, 3)
+        diff = cv2.absdiff(crop, blurred)
+        noise_estimate = float(np.mean(diff))
 
         # Score computation (0-100, higher = better exposure)
         score = 100.0
@@ -82,6 +91,10 @@ def analyze_exposure(image_path: str | Path, reject_threshold: float = 15.0) -> 
         # Reward good dynamic range (higher std_dev = more tonal range)
         if std_dev < 30:
             score -= 10  # Very flat / low contrast
+            
+        # Penalize high noise
+        if noise_estimate > 5.0:
+            score -= min(noise_estimate * 2.0, 20)
 
         score = max(0.0, min(100.0, score))
 
@@ -102,6 +115,8 @@ def analyze_exposure(image_path: str | Path, reject_threshold: float = 15.0) -> 
             verdict = "overexposed"
         elif shadows_clipped > reject_threshold:
             verdict = "underexposed"
+        elif noise_estimate > 8.0:
+            verdict = "noisy"
         elif score >= 70:
             verdict = "well-exposed"
         elif score >= 50:
@@ -110,11 +125,11 @@ def analyze_exposure(image_path: str | Path, reject_threshold: float = 15.0) -> 
             verdict = "poor-exposure"
 
         log.debug(f"Exposure: {Path(image_path).name} → score={score:.1f}, "
-                  f"highlights={highlights_clipped:.1f}%, shadows={shadows_clipped:.1f}%")
+                  f"highlights={highlights_clipped:.1f}%, shadows={shadows_clipped:.1f}%, noise={noise_estimate:.1f}")
 
         return ExposureResult(score, rating, verdict,
-                              round(highlights_clipped, 1), round(shadows_clipped, 1))
+                              round(highlights_clipped, 1), round(shadows_clipped, 1), round(noise_estimate, 1))
 
     except Exception as e:
         log.warning(f"Exposure analysis failed for {image_path}: {e}")
-        return ExposureResult(50.0, 3, "error", 0.0, 0.0)
+        return ExposureResult(50.0, 3, "error", 0.0, 0.0, 0.0)

@@ -11,6 +11,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from .vision_engine import VisionEngine
+from .face_detector import FaceDetector
+from .duplicate_detector import DuplicateDetector
 from .xmp_generator import generate_xmp
 from .exif_reader import extract_exif, format_exif_summary
 from .exposure_analyzer import analyze_exposure
@@ -30,16 +32,20 @@ class NewPhotoHandler(FileSystemEventHandler):
     def __init__(self, processing_dir: Path, rejected_dir: Path,
                  signals, vision_engine: VisionEngine,
                  history_db: HistoryDB, session_id: str,
+                 face_detector: FaceDetector,
                  auto_categorize: bool = True, top_k: int = 3):
         super().__init__()
         self.processing_dir = Path(processing_dir)
         self.rejected_dir = Path(rejected_dir)
         self.signals = signals
         self.ai = vision_engine
+        self.face_detector = face_detector
+        self.dup_detector = DuplicateDetector()
         self.history = history_db
         self.session_id = session_id
         self.auto_categorize = auto_categorize
         self.top_k = top_k
+        self.session_hashes: list[tuple[str, str]] = []  # (filename, hash_str)
 
     def on_created(self, event):
         if event.is_directory:
@@ -119,6 +125,23 @@ class NewPhotoHandler(FileSystemEventHandler):
                   f"| Highlights: {exposure.highlights_clipped}% | Shadows: {exposure.shadows_clipped}%")
         self.signals.progress_update.emit(55)
 
+        # ─── Duplicate Detection ─────────────────────────────
+        self.signals.stage_update.emit("Checking for duplicates...")
+        img_hash = self.dup_detector.compute_hash(file_path)
+        duplicate_group = ""
+        if img_hash:
+            dups = self.dup_detector.find_duplicates(img_hash, self.session_hashes)
+            if dups:
+                duplicate_group = f"dup_of_{dups[0]}"
+                self._log(f"[DUPE] Found duplicate of {dups[0]}")
+            self.session_hashes.append((file_path.name, img_hash))
+        
+        # ─── Face Detection ──────────────────────────────────
+        self.signals.stage_update.emit("Detecting faces...")
+        face_count = self.face_detector.detect_faces(file_path)
+        if face_count > 0:
+            self._log(f"[FACES] Detected {face_count} face(s)")
+
         # ─── AI Semantic Tagging ─────────────────────────────
         self.signals.stage_update.emit("Extracting semantic tags...")
         self._log(f"[AI] MobileNetV2 inference...")
@@ -129,6 +152,15 @@ class NewPhotoHandler(FileSystemEventHandler):
         # ─── Category Classification ────────────────────────
         self.signals.stage_update.emit("Classifying category...")
         category, enriched_tags = classify_tags(raw_tags)
+        
+        if face_count > 0 and "portrait" not in enriched_tags:
+            enriched_tags.append("portrait")
+            if category == "uncategorized":
+                category = "portrait"
+                
+        if duplicate_group:
+            enriched_tags.append("duplicate")
+            
         self._log(f"[SORT] Category: {category.capitalize()} | Tags: {', '.join(enriched_tags)}")
         self.signals.tags_update.emit(enriched_tags)
         self.signals.progress_update.emit(85)
@@ -282,8 +314,11 @@ class EngineWorker(QThread):
                 blur_threshold=self.blur_threshold,
                 progress_callback=on_progress
             )
+            face_detector = FaceDetector(
+                progress_callback=on_progress
+            )
         except Exception as e:
-            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [FATAL] AI engine error: {e}")
+            self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [FATAL] Engine initialization error: {e}")
             self.status_update.emit("IDLE")
             return
 
@@ -304,6 +339,7 @@ class EngineWorker(QThread):
         # Create event handler and observer
         handler = NewPhotoHandler(
             proc_path, rej_path, self, ai_engine, history, session_id,
+            face_detector=face_detector,
             auto_categorize=self.auto_categorize, top_k=self.top_k
         )
         self.observer = Observer()
