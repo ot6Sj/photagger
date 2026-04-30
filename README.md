@@ -84,18 +84,18 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 └───────────────────────┬─────────────────────────────┘
                         │ pyqtSignal (thread-safe IPC)
 ┌───────────────────────▼─────────────────────────────┐
-│              EngineWorker (QThread)                   │
-│                                                      │
+│              EngineWorker (QThread)                 │
+│                                                     │
 │  ┌─────────┐   ┌──────────┐   ┌──────────────────┐  │
-│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)   │  │
+│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)  │  │
 │  │Observer │   │OpenCV    │   │  MobileNetV2     │  │
 │  │         │   │Blur+Exp  │   │  + SmartSorter   │  │
 │  └─────────┘   └──────────┘   └──────────────────┘  │
-│                                        │             │
-│                              ┌─────────▼──────────┐  │
-│                              │  XMP + Move + DB   │  │
-│                              └────────────────────┘  │
-└──────────────────────────────────────────────────────┘
+│                                        │            │
+│                              ┌─────────▼──────────┐ │
+│                              │  XMP + Move + DB   │ │
+│                              └────────────────────┘ │
+└─────────────────────────────────────────────────────┘
 ```
 
 **Key design decisions:**
