@@ -1,9 +1,5 @@
 <p align="center">
-<<<<<<< HEAD
   <h1 align="center">Photagger</h1>
-=======
-  <h1 align="center"> Photagger</h1>
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
   <p align="center">
     <strong>AI-Powered Photography Culling & Tagging Pipeline</strong>
   </p>
@@ -22,12 +18,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-<<<<<<< HEAD
 ## Why Photagger?
-=======
-
-##  Why Photagger?
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 | Problem | Solution |
 |---------|----------|
@@ -38,15 +29,9 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-<<<<<<< HEAD
 ## Features
 
 ### Core Pipeline
-=======
-##  Features
-
-###  Core Pipeline
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 | Stage | What It Does | Technology |
 |-------|-------------|------------|
@@ -56,11 +41,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 | **Category Mapping** | Translates ImageNet labels to photographer-friendly terms | Custom JSON mapping |
 | **XMP Generation** | Writes keywords + star ratings to Lightroom-compatible sidecar files | Adobe XMP |
 
-<<<<<<< HEAD
 ### Smart Organization
-=======
-###  Smart Organization
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 - **Auto-Categorization** — Photos are sorted into subfolders based on AI classification:
   ```
@@ -77,11 +58,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 - **EXIF Extraction** — Reads camera model, lens, focal length, ISO, aperture, shutter speed, and GPS coordinates
 - **Quality Ratings** — Auto-assigns 1-5 stars based on combined focus sharpness + exposure quality
 
-<<<<<<< HEAD
 ### Professional Tools
-=======
-###  Professional Tools
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 | Tool | Description |
 |------|-------------|
@@ -95,39 +72,30 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-<<<<<<< HEAD
 ## Architecture
-=======
-##  Architecture
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   PyQt6 GUI (Main Thread)           │
+│                   PyQt6 GUI (Main Thread)            │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-<<<<<<< HEAD
 │  │  Monitor  │  │ Gallery  │  │   Image Viewer    │  │
 │  │   Tab     │  │   Tab    │  │   Full-Screen     │  │
-=======
-│  │  Monitor │  │ Gallery  │  │  Stats Dashboard  │  │
-│  │   Tab    │  │   Tab    │  │  Processed/Accept │  │
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 │  └──────────┘  └──────────┘  └───────────────────┘  │
 └───────────────────────┬─────────────────────────────┘
                         │ pyqtSignal (thread-safe IPC)
 ┌───────────────────────▼─────────────────────────────┐
-│              EngineWorker (QThread)                 │
-│                                                     │
+│              EngineWorker (QThread)                   │
+│                                                      │
 │  ┌─────────┐   ┌──────────┐   ┌──────────────────┐  │
-│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)  │  │
+│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)   │  │
 │  │Observer │   │OpenCV    │   │  MobileNetV2     │  │
 │  │         │   │Blur+Exp  │   │  + SmartSorter   │  │
 │  └─────────┘   └──────────┘   └──────────────────┘  │
-│                                       │          v  │
-│                             ┌─────────▼──────────┐  │
-│                             │  XMP + Move + DB   │  │
-│                             └────────────────────┘  │
-└─────────────────────────────────────────────────────┘
+│                                        │             │
+│                              ┌─────────▼──────────┐  │
+│                              │  XMP + Move + DB   │  │
+│                              └────────────────────┘  │
+└──────────────────────────────────────────────────────┘
 ```
 
 **Key design decisions:**
@@ -138,11 +106,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-<<<<<<< HEAD
 ## Quick Start
-=======
-##  Quick Start
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 ### Prerequisites
 
@@ -180,7 +144,6 @@ python -m photagger
 
 ### Usage
 
-<<<<<<< HEAD
 1. **Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
 2. **Set Output** — Select the destination for successfully processed & categorized photos
 3. **Start Engine** — Click to engage the background watcher
@@ -190,17 +153,6 @@ python -m photagger
 ---
 
 ## Project Structure
-=======
-1. ** Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
-2. ** Set Output** — Select the destination for successfully processed & categorized photos
-3. ** Start Engine** — Click to engage the background watcher
-4. ** Drop photos** — Copy files into the Drop Zone, or drag & drop directly onto the app
-5. ** Review** — Switch to the Gallery tab, inspect results, generate reports
-
----
-
-##  Project Structure
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 ```
 photagger/
@@ -239,11 +191,7 @@ photagger/
 
 ---
 
-<<<<<<< HEAD
 ## Adobe Lightroom Integration
-=======
-##  Adobe Lightroom Integration
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 Photagger generates `.xmp` sidecar files containing AI-generated keywords and quality star ratings. These files are natively compatible with Adobe Lightroom and Bridge.
 
@@ -275,11 +223,7 @@ xmp:Label="Green"
 
 ---
 
-<<<<<<< HEAD
 ## Running Tests
-=======
-##  Running Tests
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 ```bash
 # Activate venv
@@ -298,11 +242,7 @@ All **18 tests** cover:
 
 ---
 
-<<<<<<< HEAD
 ## Configuration
-=======
-##  Configuration
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 Settings are persisted automatically via `QSettings` (Windows Registry). Configurable options:
 
@@ -314,19 +254,11 @@ Settings are persisted automatically via `QSettings` (Windows Registry). Configu
 | Exposure Reject | `Off` | Auto-reject badly exposed images |
 | Theme Mode      | `Dark` | Light or Dark UI theme |
 
-<<<<<<< HEAD
 Access via the **Settings** button in the app header.
 
 ---
 
 ## Supported Formats
-=======
-Access via the ** Settings** button in the app header.
-
----
-
-##  Supported Formats
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 **Image formats:** `.jpg` `.jpeg` `.png` `.tif` `.tiff` `.bmp`
 
@@ -334,11 +266,7 @@ Access via the ** Settings** button in the app header.
 
 ---
 
-<<<<<<< HEAD
 ## Data Storage
-=======
-##  Data Storage
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 | Data | Location |
 |------|----------|
@@ -349,10 +277,6 @@ Access via the ** Settings** button in the app header.
 
 ---
 
-<<<<<<< HEAD
 ## License
-=======
-##  License
->>>>>>> c4cc9644ebbc5562ac26fd5660d61140770397db
 
 This project is licensed under the **MIT License** — see LICENSE for details.
