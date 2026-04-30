@@ -1,154 +1,100 @@
 <p align="center">
   <h1 align="center">Photagger</h1>
   <p align="center">
-    <strong>AI-Powered Photography Culling & Tagging Pipeline</strong>
+    <strong>Advanced AI Photography Culling & Semantic Tagging Pipeline</strong>
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
     <img src="https://img.shields.io/badge/platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
-    <img src="https://img.shields.io/badge/AI-ONNX_Runtime-005CED?style=for-the-badge&logo=onnx&logoColor=white" alt="ONNX">
+    <img src="https://img.shields.io/badge/AI-CLIP_ViT--B/32-000000?style=for-the-badge&logo=openai&logoColor=white" alt="CLIP">
+    <img src="https://img.shields.io/badge/engine-PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch">
     <img src="https://img.shields.io/badge/GUI-PyQt6-41CD52?style=for-the-badge&logo=qt&logoColor=white" alt="PyQt6">
-    <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License">
   </p>
 </p>
 
 ---
 
-A professional-grade desktop application that automatically **evaluates**, **sorts**, and **tags** RAW/JPG photography using computer vision and deep learning — with native Adobe Lightroom integration. Drop your photos in, get organized, tagged, and rated images out. Zero cloud dependency.
+Photagger is a professional-grade desktop application designed to automate the heavy lifting of photography culling. It evaluates focus, exposure, and composition while automatically tagging and sorting images using state-of-the-art computer vision. 
+
+By integrating **CLIP (Contrastive Language-Image Pre-training)** and **Multiprocessing isolation**, Photagger provides an intelligent, open-vocabulary tagging experience without the stability issues common in Windows-based AI workflows.
 
 ---
 
-## Why Photagger?
+## Performance & Intelligence
 
-| Problem | Solution |
-|---------|----------|
-| Manually reviewing hundreds of shots after a shoot | **Auto-culls** blurry & poorly exposed images instantly |
-| Spending hours tagging in Lightroom | **AI generates keywords** and writes them directly to `.xmp` sidecars |
-| Dumping everything into one folder | **Auto-sorts** into `Landscape/`, `Wildlife/`, `Portrait/` subfolders |
-| No idea which shots are your best | **Star ratings** (1-5) auto-assigned based on focus + exposure quality |
+| Feature | Implementation |
+|---------|----------------|
+| **Semantic Tagging** | Full **OpenAI CLIP ViT-B/32** integration for zero-shot image classification and tagging. |
+| **Face Detection** | UltraFace ONNX model for rapid face counting and automatic portrait identification. |
+| **Duplicate Detection** | Perceptual hashing (pHash) to identify near-identical images in burst sequences. |
+| **Quality Analysis** | Laplacian focus evaluation and histogram-based exposure analysis with noise estimation. |
+| **Batch Transparency** | Intelligent Queue Manager with rolling-average ETA estimation and real-time progress. |
 
 ---
 
-## Features
+## Core Capabilities
 
-### Core Pipeline
+### Semantic Intelligence
+Unlike traditional classifiers with fixed labels, Photagger uses **CLIP** to understand photography in a human-like way. It classifies images into categories like `Landscape`, `Wildlife`, `Portrait`, `Architecture`, and `Street` by calculating semantic similarity between images and natural language prompts.
 
-| Stage | What It Does | Technology |
-|-------|-------------|------------|
-| **Focus Detection** | Flags out-of-focus shots using Laplacian variance analysis | OpenCV |
-| **Exposure Analysis** | Detects blown highlights & crushed shadows via histogram evaluation | OpenCV |
-| **Semantic Tagging** | Classifies image content into 1000 ImageNet categories | MobileNetV2 (ONNX) |
-| **Category Mapping** | Translates ImageNet labels to photographer-friendly terms | Custom JSON mapping |
-| **XMP Generation** | Writes keywords + star ratings to Lightroom-compatible sidecar files | Adobe XMP |
+### Near-Duplicate Tracking
+The pipeline computes perceptual hashes for every image. If you shoot a burst of 10 identical frames, Photagger identifies them as near-duplicates, allowing you to quickly cull the "redundant" shots and keep only the best one.
 
-### Smart Organization
-
-- **Auto-Categorization** — Photos are sorted into subfolders based on AI classification:
-  ```
-  Processing/
-  ├── Landscape/        (mountains, seashores, valleys)
-  ├── Wildlife/         (animals, birds, marine life)
-  ├── Portrait/         (people, fashion)
-  ├── Architecture/     (buildings, churches, castles)
-  ├── Street/           (vehicles, urban scenes)
-  ├── Macro/            (insects, flowers, close-ups)
-  ├── Food/             (culinary shots)
-  └── Uncategorized/    (everything else)
-  ```
-- **EXIF Extraction** — Reads camera model, lens, focal length, ISO, aperture, shutter speed, and GPS coordinates
-- **Quality Ratings** — Auto-assigns 1-5 stars based on combined focus sharpness + exposure quality
-
-### Professional Tools
-
-| Tool | Description |
-|------|-------------|
-| **Modern UI** | Sidebar navigation, light/dark themes, and animated stat widgets |
-| **Gallery View** | Scrollable thumbnail grid with advanced filtering, sorting, and searching |
-| **Full-Screen Viewer** | High-performance image viewer with zoom, pan, filmstrip, and EXIF overlay |
-| **Session Reports** | One-click HTML reports with stats cards, category breakdowns, and per-image details |
-| **Processing History** | SQLite database logs every event — enables undo, re-processing, and analytics |
-| **Drag & Drop** | Drag photos from Windows Explorer directly onto the app window |
-| **Shortcuts** | Keyboard-centric workflow with a dedicated shortcut manager |
+### Adobe Lightroom Integration
+Photagger writes all AI-generated tags, face counts, and star ratings directly to industry-standard **.xmp** sidecar files. Lightroom and Adobe Bridge read these files automatically, populating your catalog with searchable keywords and ratings before you even open the Library module.
 
 ---
 
 ## Architecture
 
+To ensure maximum stability on Windows, Photagger utilizes a **Decoupled Multiprocessing Architecture**. PyTorch and the heavy AI models are isolated in a completely separate Python process, preventing DLL initialization conflicts (`WinError 1114`) between deep learning libraries and the PyQt6 GUI thread.
+
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   PyQt6 GUI (Main Thread)            │
+│                   PyQt6 GUI (Main Process)          │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-│  │  Monitor  │  │ Gallery  │  │   Image Viewer    │  │
-│  │   Tab     │  │   Tab    │  │   Full-Screen     │  │
+│  │ Dashboard│  │ Gallery  │  │   Image Viewer    │  │
+│  │ Monitor  │  │ Filter   │  │   Full-Screen     │  │
 │  └──────────┘  └──────────┘  └───────────────────┘  │
 └───────────────────────┬─────────────────────────────┘
-                        │ pyqtSignal (thread-safe IPC)
+                        │ IPC (multiprocessing.Queue)
 ┌───────────────────────▼─────────────────────────────┐
-│              EngineWorker (QThread)                 │
+│               AI WORKER (Isolated Process)          │
 │                                                     │
-│  ┌─────────┐   ┌──────────┐   ┌──────────────────┐  │
-│  │Watchdog │──▶│ Bouncer  │──▶│   Brain (ONNX)  │  │
-│  │Observer │   │OpenCV    │   │  MobileNetV2     │  │
-│  │         │   │Blur+Exp  │   │  + SmartSorter   │  │
-│  └─────────┘   └──────────┘   └──────────────────┘  │
-│                                        │            │
-│                              ┌─────────▼──────────┐ │
-│                              │  XMP + Move + DB   │ │
-│                              └────────────────────┘ │
+│  ┌──────────┐   ┌──────────┐   ┌─────────────────┐  │
+│  │ CLIP     │   │ UltraFace│   │ Perceptual      │  │
+│  │ PyTorch  │   │ ONNX     │   │ Hashing         │  │
+│  └──────────┘   └──────────┘   └─────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
 
-**Key design decisions:**
-- **ONNX Runtime over PyTorch** — Eliminates CUDA/DLL conflicts (`WinError 1114`), runs on any hardware
-- **QThread + Watchdog** — Heavy AI workload runs in background, GUI stays responsive
-- **threading.Event** — Thread-safe shutdown (no race conditions)
-- **File lock retry** — 3-attempt retry for `shutil.move()` when Windows antivirus holds file locks
-
 ---
 
-## Quick Start
+## Installation
 
 ### Prerequisites
-
 - **Python 3.10+**
-- **Windows 10/11**
+- **Windows 10/11** (Optimized for Windows DLL handling)
 
-### Installation
+### Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/photagger.git
+   cd photagger
+   ```
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/photagger.git
-cd photagger
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
 
-# Create and activate virtual environment
-python -m venv .venv
-.venv\Scripts\activate
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-# Install dependencies
-pip install -r requirements.txt
-```
-
-> **Note:** On first launch, the ONNX model (`mobilenetv2-7.onnx`, ~14 MB) will be automatically downloaded from Microsoft's repository and cached in `%APPDATA%/Photagger/models/`.
-
-### Launch
-
-```bash
-python run.py
-```
-
-Or run as a Python module:
-```bash
-set PYTHONPATH=src
-python -m photagger
-```
-
-### Usage
-
-1. **Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
-2. **Set Output** — Select the destination for successfully processed & categorized photos
-3. **Start Engine** — Click to engage the background watcher
-4. **Drop photos** — Copy files into the Drop Zone, or drag & drop directly onto the app
-5. **Review** — Switch to the Gallery tab, inspect results, generate reports
+> **Note:** On the first launch, the application will download the CLIP ViT-B/32 model (~600 MB) from the HuggingFace Hub.
 
 ---
 
@@ -156,127 +102,38 @@ python -m photagger
 
 ```
 photagger/
-├── src/photagger/                # Main application package
-│   ├── __init__.py               # Package init + version
-│   ├── __main__.py               # Entry point (python -m photagger)
-│   ├── app.py                    # Premium PyQt6 UI (sidebar, stats, stack)
-│   ├── watcher.py                # File system watcher + processing pipeline
-│   ├── vision_engine.py          # ONNX blur detection + semantic tagging
-│   ├── xmp_generator.py          # Adobe XMP sidecar generation
-│   ├── exif_reader.py            # EXIF metadata extraction (Pillow)
-│   ├── exposure_analyzer.py      # Histogram-based exposure quality scoring
-│   ├── smart_sorter.py           # AI tag to photography category mapper
-│   ├── gallery_widget.py         # Thumbnail grid widget with context menus
-│   ├── image_viewer.py           # Full-screen image viewer with filmstrip
-│   ├── theme.py                  # Dark/Light theme manager
-│   ├── history_db.py             # SQLite processing history + sessions
-│   ├── session_report.py         # HTML/CSV report generator
-│   ├── config.py                 # QSettings persistence layer
-│   ├── constants.py              # Centralized config, colors, defaults
-│   ├── logger.py                 # Rotating file logger (%APPDATA%)
-│   ├── icons.py                  # Programmatic SVG icons (No emojis)
-│   └── resources/
-│       ├── imagenet_classes.txt   # 1000 ImageNet class labels
-│       └── photo_categories.json  # ImageNet to photography category mapping
-├── tests/                        # Unit tests (18 tests)
-│   ├── test_vision_engine.py     # Preprocessing, blur detection
-│   ├── test_xmp_generator.py     # XMP generation, XML escaping, ratings
-│   └── test_watcher.py           # Smart sorter, exposure analyzer
-├── pyproject.toml                # PEP 621 packaging
-├── requirements.txt              # Pinned dependencies
-├── run.py                        # Development launcher
-├── LICENSE                       # MIT License
-└── README.md                     # This file
+├── src/photagger/                # Core application package
+│   ├── app.py                    # Main UI (Sidebar, Stats, Theme Engine)
+│   ├── watcher.py                # Pipeline orchestrator & Multiprocessing proxy
+│   ├── vision_engine.py          # Isolated AI Worker (CLIP & PyTorch)
+│   ├── face_detector.py          # ONNX-based face detection
+│   ├── duplicate_detector.py     # Perceptual hashing (imagehash)
+│   ├── queue_manager.py          # ETA estimation & Batch tracking
+│   ├── exposure_analyzer.py      # Histogram & Noise evaluation
+│   ├── xmp_generator.py          # Adobe XMP generation
+│   ├── smart_sorter.py           # Semantic routing logic
+│   ├── gallery_widget.py         # Grid view with advanced filtering
+│   ├── image_viewer.py           # Professional viewer with filmstrip
+│   ├── theme.py                  # Light/Dark mode manager
+│   ├── history_db.py             # SQLite persistence
+│   └── icons.py                  # Programmatic SVG icon system
+├── tests/                        # Automated test suite
+├── run.py                        # Application entry point
+└── requirements.txt              # Dependency manifest
 ```
-
----
-
-## Adobe Lightroom Integration
-
-Photagger generates `.xmp` sidecar files containing AI-generated keywords and quality star ratings. These files are natively compatible with Adobe Lightroom and Bridge.
-
-### Importing into Lightroom
-
-| File Type | How to Import |
-|-----------|---------------|
-| **RAW** (`.CR2`, `.NEF`, `.ARW`, `.DNG`, `.RAF`, etc.) | Lightroom reads `.xmp` sidecars **automatically** on import — just drag the output folder into the Library |
-| **JPEG** (`.jpg`, `.jpeg`) | After import: select photos, right-click, select **Metadata**, then **Read Metadata from File** |
-
-### What Gets Written to XMP
-
-```xml
-<!-- AI-generated keywords -->
-<dc:subject>
-  <rdf:Bag>
-    <rdf:li>wildlife</rdf:li>      <!-- photography category -->
-    <rdf:li>golden retriever</rdf:li> <!-- ImageNet classification -->
-    <rdf:li>grass</rdf:li>
-  </rdf:Bag>
-</dc:subject>
-
-<!-- Auto-assigned quality rating -->
-xmp:Rating="4"
-
-<!-- Optional color label for well-exposed shots -->
-xmp:Label="Green"
-```
-
----
-
-## Running Tests
-
-```bash
-# Activate venv
-.venv\Scripts\activate
-
-# Run full test suite
-python -m pytest tests/ -v
-```
-
-All **18 tests** cover:
-- Image preprocessing (shape, normalization range)
-- Blur detection (sharp vs. blurry synthetic images)
-- Exposure analysis (balanced vs. overexposed)
-- XMP generation (basic, ratings, XML injection protection, edge cases)
-- Smart categorization (wildlife, architecture, unknown tags)
 
 ---
 
 ## Configuration
 
-Settings are persisted automatically via `QSettings` (Windows Registry). Configurable options:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Blur Threshold | `100.0` | Laplacian variance cutoff (lower = stricter) |
-| AI Tags Count | `3` | Number of top-K tags per image |
-| Auto-Categorize | `On` | Sort into category subfolders |
-| Exposure Reject | `Off` | Auto-reject badly exposed images |
-| Theme Mode      | `Dark` | Light or Dark UI theme |
-
-Access via the **Settings** button in the app header.
-
----
-
-## Supported Formats
-
-**Image formats:** `.jpg` `.jpeg` `.png` `.tif` `.tiff` `.bmp`
-
-**RAW formats:** `.cr2` `.cr3` `.nef` `.arw` `.dng` `.raf` `.orf` `.rw2` `.raw` `.heic` `.heif`
-
----
-
-## Data Storage
-
-| Data | Location |
-|------|----------|
-| ONNX Model | `%APPDATA%/Photagger/models/mobilenetv2-7.onnx` |
-| Processing History | `%APPDATA%/Photagger/history.db` |
-| Log Files | `%APPDATA%/Photagger/logs/photagger.log` |
-| Settings | Windows Registry (`HKCU\Software\Photagger`) |
+| Setting | Description |
+|---------|-------------|
+| **Blur Threshold** | Laplacian variance cutoff for focus rejection. |
+| **Top-K Tags** | Number of semantic tags to generate per image. |
+| **Auto-Categorize** | Automatically sort images into category subfolders. |
+| **Theme Mode** | Toggle between professional Light and Dark interfaces. |
 
 ---
 
 ## License
-
-This project is licensed under the **MIT License** — see LICENSE for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
