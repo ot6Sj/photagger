@@ -10,6 +10,7 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+from .queue_manager import QueueManager
 import multiprocessing as mp
 from .face_detector import FaceDetector
 from .duplicate_detector import DuplicateDetector
@@ -73,7 +74,7 @@ class NewPhotoHandler(FileSystemEventHandler):
     """Handles new file events from the watchdog observer."""
 
     def __init__(self, processing_dir: Path, rejected_dir: Path,
-                 signals, ai_proxy: AIProxy,
+                 signals, ai_proxy: AIProxy, queue_manager: QueueManager,
                  history_db: HistoryDB, session_id: str,
                  face_detector: FaceDetector,
                  auto_categorize: bool = True, top_k: int = 3):
@@ -82,6 +83,7 @@ class NewPhotoHandler(FileSystemEventHandler):
         self.rejected_dir = Path(rejected_dir)
         self.signals = signals
         self.ai = ai_proxy
+        self.queue = queue_manager
         self.face_detector = face_detector
         self.dup_detector = DuplicateDetector()
         self.history = history_db
@@ -104,6 +106,10 @@ class NewPhotoHandler(FileSystemEventHandler):
         """Full processing pipeline for a single image file."""
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             return
+
+        self.queue.mark_start()
+        processed, total, eta = self.queue.get_status()
+        self.signals.queue_update.emit(processed, total, eta)
 
         self._log(f"[DETECT] {file_path.name}")
         self._log(f"[WAIT] File transfer in progress...")
@@ -156,6 +162,9 @@ class NewPhotoHandler(FileSystemEventHandler):
             })
             self.signals.progress_update.emit(0)
             self.signals.stage_update.emit("")
+            self.queue.mark_processed()
+            processed, total, eta = self.queue.get_status()
+            self.signals.queue_update.emit(processed, total, eta)
             return
 
         self._log(f"[PASS] Variance {var_score:.1f} — Sharp")
@@ -251,6 +260,11 @@ class NewPhotoHandler(FileSystemEventHandler):
 
         self._log(f"Processing complete: {file_path.name}")
         self.signals.progress_update.emit(100)
+        
+        self.queue.mark_processed()
+        processed, total, eta = self.queue.get_status()
+        self.signals.queue_update.emit(processed, total, eta)
+        
         time.sleep(0.3)
         self.signals.progress_update.emit(0)
         self.signals.stage_update.emit("")
@@ -330,6 +344,7 @@ class EngineWorker(QThread):
     tags_update = pyqtSignal(list)     # enriched tag list
     exif_update = pyqtSignal(dict)     # EXIF data dict
     gallery_entry = pyqtSignal(dict)   # full entry for gallery display
+    queue_update = pyqtSignal(int, int, int) # processed, total, eta_seconds
 
     def __init__(self, drop_zone: str, processing_zone: str, rejected_zone: str,
                  blur_threshold: float = DEFAULT_BLUR_THRESHOLD,
@@ -353,7 +368,7 @@ class EngineWorker(QThread):
             self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
         try:
-            ai_proxy = AIProxy(
+            self.ai_proxy = AIProxy(
                 blur_threshold=self.blur_threshold,
                 signals=self
             )
@@ -365,7 +380,7 @@ class EngineWorker(QThread):
             self.status_update.emit("IDLE")
             return
 
-        if not getattr(ai_proxy, 'is_ready', False):
+        if not getattr(self.ai_proxy, 'is_ready', False):
             self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [WARN] AI engine in degraded mode (tagging disabled)")
 
         # Initialize history database
@@ -379,9 +394,12 @@ class EngineWorker(QThread):
         for p in (drop_path, proc_path, rej_path):
             p.mkdir(parents=True, exist_ok=True)
 
+        # Create queue manager
+        queue_manager = QueueManager(str(drop_path))
+
         # Create event handler and observer
         handler = NewPhotoHandler(
-            proc_path, rej_path, self, ai_proxy, history, session_id,
+            proc_path, rej_path, self, self.ai_proxy, queue_manager, history, session_id,
             face_detector=face_detector,
             auto_categorize=self.auto_categorize, top_k=self.top_k
         )

@@ -436,7 +436,11 @@ class MainWindow(QMainWindow):
         self.config.save_geometry(self.saveGeometry(), self.saveState())
         if self.worker:
             self.worker.stop()
-            self.worker.wait(3000)
+            # Give the worker a chance to exit cleanly, but don't hang the GUI
+            self.worker.wait(1000)
+            if self.worker.isRunning():
+                self.worker.terminate()
+                self.worker.wait(500)
         event.accept()
 
     def _update_theme_icon(self):
@@ -512,6 +516,7 @@ class MainWindow(QMainWindow):
             self.worker.tags_update.connect(self._update_tags)
             self.worker.exif_update.connect(self._update_exif)
             self.worker.gallery_entry.connect(self.gallery.add_entry)
+            self.worker.queue_update.connect(self.update_queue)
             
             self.worker.start()
             self.report_btn.setEnabled(True)
@@ -521,11 +526,29 @@ class MainWindow(QMainWindow):
             if self.worker:
                 self._append_log(f"[{time.strftime('%H:%M:%S')}] [STOP] Shutting down engine...")
                 self.worker.stop()
-                self.worker.wait(5000)
+                self.worker.wait(1000)
+                if self.worker.isRunning():
+                    self.worker.terminate()
+                    self.worker.wait(500)
                 self.worker = None
 
     def _append_log(self, text: str):
         self.log_window.append(text)
+
+    @pyqtSlot(int, int, int)
+    def update_queue(self, processed: int, total: int, eta_seconds: int):
+        P = get_palette()
+        if total == 0:
+            self.queue_label.setText("Queue: 0")
+            self.queue_label.setStyleSheet(f"color: {P.TEXT_SECONDARY};")
+        elif processed >= total:
+            self.queue_label.setText(f"Queue: {total}/{total} — Done")
+            self.queue_label.setStyleSheet(f"color: {P.SUCCESS}; font-weight: bold;")
+        else:
+            mins, secs = divmod(eta_seconds, 60)
+            eta_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+            self.queue_label.setText(f"Queue: {processed}/{total} | ETA: {eta_str}")
+            self.queue_label.setStyleSheet(f"color: {P.ACCENT}; font-weight: bold;")
 
     def _update_status(self, status: str):
         P = get_palette()

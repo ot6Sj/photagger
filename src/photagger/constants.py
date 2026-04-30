@@ -22,10 +22,7 @@ SUPPORTED_EXTENSIONS = {
 }
 
 # --- AI Model -------------------------------------------------------------
-MODEL_FILENAME = "mobilenetv2-7.onnx"
-CLASSES_FILENAME = "imagenet_classes.txt"
-MODEL_URL = "https://github.com/onnx/models/raw/main/validated/vision/classification/mobilenet/model/mobilenetv2-7.onnx"
-CLASSES_URL = "https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt"
+# CLIP model uses HuggingFace transformers (openai/clip-vit-base-patch32)
 
 # --- Processing Defaults --------------------------------------------------
 DEFAULT_BLUR_THRESHOLD = 100.0
