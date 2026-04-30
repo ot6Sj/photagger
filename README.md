@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">📸 Photagger</h1>
+  <h1 align="center">Photagger</h1>
   <p align="center">
     <strong>AI-Powered Photography Culling & Tagging Pipeline</strong>
   </p>
@@ -18,66 +18,68 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-## 🎯 Why Photagger?
+## Why Photagger?
 
 | Problem | Solution |
 |---------|----------|
 | Manually reviewing hundreds of shots after a shoot | **Auto-culls** blurry & poorly exposed images instantly |
 | Spending hours tagging in Lightroom | **AI generates keywords** and writes them directly to `.xmp` sidecars |
 | Dumping everything into one folder | **Auto-sorts** into `Landscape/`, `Wildlife/`, `Portrait/` subfolders |
-| No idea which shots are your best | **Star ratings** (1-5★) auto-assigned based on focus + exposure quality |
+| No idea which shots are your best | **Star ratings** (1-5) auto-assigned based on focus + exposure quality |
 
 ---
 
-## ✨ Features
+## Features
 
-### 🔬 Core Pipeline
+### Core Pipeline
 
 | Stage | What It Does | Technology |
 |-------|-------------|------------|
 | **Focus Detection** | Flags out-of-focus shots using Laplacian variance analysis | OpenCV |
 | **Exposure Analysis** | Detects blown highlights & crushed shadows via histogram evaluation | OpenCV |
 | **Semantic Tagging** | Classifies image content into 1000 ImageNet categories | MobileNetV2 (ONNX) |
-| **Category Mapping** | Translates ImageNet labels → photographer-friendly terms | Custom JSON mapping |
+| **Category Mapping** | Translates ImageNet labels to photographer-friendly terms | Custom JSON mapping |
 | **XMP Generation** | Writes keywords + star ratings to Lightroom-compatible sidecar files | Adobe XMP |
 
-### 📁 Smart Organization
+### Smart Organization
 
 - **Auto-Categorization** — Photos are sorted into subfolders based on AI classification:
   ```
   Processing/
-  ├── Landscape/        ← mountains, seashores, valleys
-  ├── Wildlife/         ← animals, birds, marine life
-  ├── Portrait/         ← people, fashion
-  ├── Architecture/     ← buildings, churches, castles
-  ├── Street/           ← vehicles, urban scenes
-  ├── Macro/            ← insects, flowers, close-ups
-  ├── Food/             ← culinary shots
-  └── Uncategorized/    ← everything else
+  ├── Landscape/        (mountains, seashores, valleys)
+  ├── Wildlife/         (animals, birds, marine life)
+  ├── Portrait/         (people, fashion)
+  ├── Architecture/     (buildings, churches, castles)
+  ├── Street/           (vehicles, urban scenes)
+  ├── Macro/            (insects, flowers, close-ups)
+  ├── Food/             (culinary shots)
+  └── Uncategorized/    (everything else)
   ```
 - **EXIF Extraction** — Reads camera model, lens, focal length, ISO, aperture, shutter speed, and GPS coordinates
-- **Quality Ratings** — Auto-assigns 1-5★ based on combined focus sharpness + exposure quality
+- **Quality Ratings** — Auto-assigns 1-5 stars based on combined focus sharpness + exposure quality
 
-### 🛠️ Professional Tools
+### Professional Tools
 
 | Tool | Description |
 |------|-------------|
-| **Gallery View** | Scrollable thumbnail grid with color-coded borders (green = accepted, red = rejected) |
+| **Modern UI** | Sidebar navigation, light/dark themes, and animated stat widgets |
+| **Gallery View** | Scrollable thumbnail grid with advanced filtering, sorting, and searching |
+| **Full-Screen Viewer** | High-performance image viewer with zoom, pan, filmstrip, and EXIF overlay |
 | **Session Reports** | One-click HTML reports with stats cards, category breakdowns, and per-image details |
 | **Processing History** | SQLite database logs every event — enables undo, re-processing, and analytics |
 | **Drag & Drop** | Drag photos from Windows Explorer directly onto the app window |
-| **Settings Dialog** | Adjustable blur threshold, tag count, auto-categorize toggle, exposure reject |
+| **Shortcuts** | Keyboard-centric workflow with a dedicated shortcut manager |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   PyQt6 GUI (Main Thread)            │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-│  │  Monitor  │  │ Gallery  │  │  Stats Dashboard  │  │
-│  │   Tab     │  │   Tab    │  │  Processed/Accept │  │
+│  │  Monitor  │  │ Gallery  │  │   Image Viewer    │  │
+│  │   Tab     │  │   Tab    │  │   Full-Screen     │  │
 │  └──────────┘  └──────────┘  └───────────────────┘  │
 └───────────────────────┬─────────────────────────────┘
                         │ pyqtSignal (thread-safe IPC)
@@ -104,7 +106,7 @@ A professional-grade desktop application that automatically **evaluates**, **sor
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -142,37 +144,40 @@ python -m photagger
 
 ### Usage
 
-1. **📂 Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
-2. **📁 Set Output** — Select the destination for successfully processed & categorized photos
-3. **▶️ Start Engine** — Click to engage the background watcher
-4. **📷 Drop photos** — Copy files into the Drop Zone, or drag & drop directly onto the app
-5. **🖼️ Review** — Switch to the Gallery tab, inspect results, generate reports
+1. **Set Drop Zone** — Select the folder where photos will land (from SD cards, imports, etc.)
+2. **Set Output** — Select the destination for successfully processed & categorized photos
+3. **Start Engine** — Click to engage the background watcher
+4. **Drop photos** — Copy files into the Drop Zone, or drag & drop directly onto the app
+5. **Review** — Switch to the Gallery tab, inspect results, generate reports
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 photagger/
 ├── src/photagger/                # Main application package
 │   ├── __init__.py               # Package init + version
 │   ├── __main__.py               # Entry point (python -m photagger)
-│   ├── app.py                    # Premium PyQt6 UI (tabbed, stats, gallery)
+│   ├── app.py                    # Premium PyQt6 UI (sidebar, stats, stack)
 │   ├── watcher.py                # File system watcher + processing pipeline
 │   ├── vision_engine.py          # ONNX blur detection + semantic tagging
 │   ├── xmp_generator.py          # Adobe XMP sidecar generation
 │   ├── exif_reader.py            # EXIF metadata extraction (Pillow)
 │   ├── exposure_analyzer.py      # Histogram-based exposure quality scoring
-│   ├── smart_sorter.py           # AI tag → photography category mapper
+│   ├── smart_sorter.py           # AI tag to photography category mapper
 │   ├── gallery_widget.py         # Thumbnail grid widget with context menus
+│   ├── image_viewer.py           # Full-screen image viewer with filmstrip
+│   ├── theme.py                  # Dark/Light theme manager
 │   ├── history_db.py             # SQLite processing history + sessions
 │   ├── session_report.py         # HTML/CSV report generator
 │   ├── config.py                 # QSettings persistence layer
 │   ├── constants.py              # Centralized config, colors, defaults
 │   ├── logger.py                 # Rotating file logger (%APPDATA%)
+│   ├── icons.py                  # Programmatic SVG icons (No emojis)
 │   └── resources/
 │       ├── imagenet_classes.txt   # 1000 ImageNet class labels
-│       └── photo_categories.json  # ImageNet → photography category mapping
+│       └── photo_categories.json  # ImageNet to photography category mapping
 ├── tests/                        # Unit tests (18 tests)
 │   ├── test_vision_engine.py     # Preprocessing, blur detection
 │   ├── test_xmp_generator.py     # XMP generation, XML escaping, ratings
@@ -186,7 +191,7 @@ photagger/
 
 ---
 
-## 🎯 Adobe Lightroom Integration
+## Adobe Lightroom Integration
 
 Photagger generates `.xmp` sidecar files containing AI-generated keywords and quality star ratings. These files are natively compatible with Adobe Lightroom and Bridge.
 
@@ -195,7 +200,7 @@ Photagger generates `.xmp` sidecar files containing AI-generated keywords and qu
 | File Type | How to Import |
 |-----------|---------------|
 | **RAW** (`.CR2`, `.NEF`, `.ARW`, `.DNG`, `.RAF`, etc.) | Lightroom reads `.xmp` sidecars **automatically** on import — just drag the output folder into the Library |
-| **JPEG** (`.jpg`, `.jpeg`) | After import: select photos → right-click → **Metadata** → **Read Metadata from File** |
+| **JPEG** (`.jpg`, `.jpeg`) | After import: select photos, right-click, select **Metadata**, then **Read Metadata from File** |
 
 ### What Gets Written to XMP
 
@@ -218,7 +223,7 @@ xmp:Label="Green"
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 ```bash
 # Activate venv
@@ -237,7 +242,7 @@ All **18 tests** cover:
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Settings are persisted automatically via `QSettings` (Windows Registry). Configurable options:
 
@@ -247,12 +252,13 @@ Settings are persisted automatically via `QSettings` (Windows Registry). Configu
 | AI Tags Count | `3` | Number of top-K tags per image |
 | Auto-Categorize | `On` | Sort into category subfolders |
 | Exposure Reject | `Off` | Auto-reject badly exposed images |
+| Theme Mode      | `Dark` | Light or Dark UI theme |
 
-Access via the **⚙️ Settings** button in the app header.
+Access via the **Settings** button in the app header.
 
 ---
 
-## 📦 Supported Formats
+## Supported Formats
 
 **Image formats:** `.jpg` `.jpeg` `.png` `.tif` `.tiff` `.bmp`
 
@@ -260,7 +266,7 @@ Access via the **⚙️ Settings** button in the app header.
 
 ---
 
-## 🗂️ Data Storage
+## Data Storage
 
 | Data | Location |
 |------|----------|
@@ -271,6 +277,6 @@ Access via the **⚙️ Settings** button in the app header.
 
 ---
 
-## 📜 License
+## License
 
-This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
+This project is licensed under the **MIT License** — see LICENSE for details.
