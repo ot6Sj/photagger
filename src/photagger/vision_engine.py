@@ -1,139 +1,64 @@
 """
-Photagger — ONNX-based computer vision engine.
-Handles blur detection (OpenCV Laplacian) and semantic tagging (MobileNetV2).
+Photagger — CLIP-based semantic tagging engine.
+Uses HuggingFace Transformers and PyTorch isolated in a separate process.
 """
-import cv2
-import numpy as np
+import os
 from pathlib import Path
 from PIL import Image
-import httpx
-import onnxruntime as ort
 
-from .constants import (
-    MODEL_FILENAME, CLASSES_FILENAME, MODEL_URL, CLASSES_URL,
-    RESOURCES_DIR, DEFAULT_BLUR_THRESHOLD,
-)
+# Import torch and transformers. This module MUST only be imported inside a 
+# multiprocessing.Process to avoid WinError 1114 DLL conflicts with PyQt6.
+import torch
+from transformers import CLIPProcessor, CLIPModel
+
 from .logger import get_logger
+from .constants import DEFAULT_BLUR_THRESHOLD
+import cv2
 
 log = get_logger("vision")
 
 
-def _get_model_dir() -> Path:
-    """Get the directory for storing downloaded models."""
-    import os
-    appdata = os.environ.get("APPDATA", Path.home() / ".config")
-    model_dir = Path(appdata) / "Photagger" / "models"
-    model_dir.mkdir(parents=True, exist_ok=True)
-    return model_dir
-
-
 class VisionEngine:
-    """Combined blur detection + ONNX semantic tagging engine."""
+    """Full CLIP semantic tagging + OpenCV blur detection engine."""
 
     def __init__(self, blur_threshold: float = DEFAULT_BLUR_THRESHOLD,
                  progress_callback=None):
         self.blur_threshold = blur_threshold
         self._progress = progress_callback or (lambda msg: None)
+        self.model = None
+        self.processor = None
+        self.device = "cpu"
+        
+        # Hardcode some photography categories for zero-shot text matching
+        self.categories = [
+            "landscape", "wildlife", "portrait", "architecture", 
+            "street", "macro", "food", "sports", "astrophotography", "abstract"
+        ]
+        
+        self.text_prompts = [f"a professional photo of {cat}" for cat in self.categories]
 
-        self.model_dir = _get_model_dir()
-        self.model_path = self.model_dir / MODEL_FILENAME
-        self.classes_path = RESOURCES_DIR / CLASSES_FILENAME
-
-        self.ort_session = None
-        self.categories: list[str] = []
-
-        self._ensure_assets()
         self._load_model()
 
-    def _ensure_assets(self):
-        """Download model files if not present, with retry logic."""
-        if not self.classes_path.exists():
-            # Try bundled resources first, then download
-            self._download_file(CLASSES_URL, self.classes_path, "ImageNet labels")
-
-        if not self.model_path.exists():
-            self._download_file(MODEL_URL, self.model_path, "MobileNetV2 ONNX model", stream=True)
-
-    def _download_file(self, url: str, dest: Path, label: str, stream: bool = False, retries: int = 3):
-        """Download a file with retry logic and progress reporting."""
-        for attempt in range(1, retries + 1):
-            try:
-                self._progress(f"Downloading {label} (attempt {attempt}/{retries})...")
-                log.info(f"Downloading {label} from {url}")
-
-                if stream:
-                    with httpx.stream("GET", url, follow_redirects=True, timeout=120.0) as r:
-                        r.raise_for_status()
-                        total = int(r.headers.get("content-length", 0))
-                        downloaded = 0
-                        with open(dest, "wb") as f:
-                            for chunk in r.iter_bytes(chunk_size=65536):
-                                f.write(chunk)
-                                downloaded += len(chunk)
-                                if total > 0:
-                                    pct = int((downloaded / total) * 100)
-                                    self._progress(f"Downloading {label}... {pct}%")
-                else:
-                    response = httpx.get(url, timeout=30.0, follow_redirects=True)
-                    response.raise_for_status()
-                    dest.write_bytes(response.content)
-
-                log.info(f"Downloaded {label} → {dest}")
-                self._progress(f"Downloaded {label} ✓")
-                return
-            except Exception as e:
-                log.warning(f"Download attempt {attempt} failed for {label}: {e}")
-                if attempt == retries:
-                    log.error(f"Failed to download {label} after {retries} attempts")
-                    self._progress(f"Failed to download {label}")
-                else:
-                    import time
-                    time.sleep(2 ** attempt)  # Exponential backoff
-
     def _load_model(self):
-        """Load the ONNX model and class labels."""
+        """Download and load the HuggingFace CLIP model."""
+        self._progress("[DOWNLOAD] Initializing CLIP ViT-B/32 model (~600MB)...")
         try:
-            if self.model_path.exists():
-                self.ort_session = ort.InferenceSession(str(self.model_path))
-                log.info("ONNX model loaded successfully")
-            else:
-                log.warning("ONNX model file not found, tagging disabled")
-
-            if self.classes_path.exists():
-                with open(self.classes_path, "r", encoding="utf-8") as f:
-                    self.categories = [s.strip() for s in f.readlines()]
-                log.info(f"Loaded {len(self.categories)} class labels")
-            else:
-                log.warning("Class labels not found, tagging disabled")
+            # We use openai/clip-vit-base-patch32
+            # It will download automatically via huggingface_hub on first run.
+            self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+            self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+            self.model.to(self.device)
+            self.model.eval()
+            self._progress("[READY] CLIP Model loaded successfully.")
+            log.info("CLIP model loaded successfully")
         except Exception as e:
-            log.error(f"Failed to load ONNX model: {e}")
+            log.error(f"Failed to load CLIP model: {e}")
+            self._progress(f"[ERROR] CLIP load failed: {e}")
 
     @property
     def is_ready(self) -> bool:
         """Check if the engine is fully loaded and ready."""
-        return self.ort_session is not None and len(self.categories) > 0
-
-    def preprocess(self, img: Image.Image) -> np.ndarray:
-        """Standard ImageNet preprocessing: resize, center-crop, normalize."""
-        # Resize shortest side to 256
-        ratio = 256.0 / min(img.width, img.height)
-        new_w, new_h = int(img.width * ratio), int(img.height * ratio)
-        img = img.resize((new_w, new_h), Image.Resampling.BILINEAR)
-
-        # Center crop 224x224
-        left = (new_w - 224) / 2
-        top = (new_h - 224) / 2
-        img = img.crop((left, top, left + 224, top + 224))
-
-        # To float32 array, normalize
-        img_data = np.array(img).astype(np.float32) / 255.0
-        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-        img_data = (img_data - mean) / std
-
-        # HWC → CHW, add batch dim
-        img_data = np.transpose(img_data, [2, 0, 1])
-        return np.expand_dims(img_data, axis=0)
+        return self.model is not None and self.processor is not None
 
     def is_blurry(self, image_path: str | Path) -> tuple[bool, float]:
         """
@@ -155,27 +80,69 @@ class VisionEngine:
 
     def get_tags(self, image_path: str | Path, top_k: int = 3) -> list[str]:
         """
-        ONNX MobileNetV2 semantic tagging.
-        Returns top-k predicted ImageNet labels.
+        Full open-vocabulary CLIP semantic tagging.
+        Returns top-k predicted labels.
         """
         if not self.is_ready:
             return ["tagging_disabled"]
 
         try:
-            input_image = Image.open(str(image_path)).convert("RGB")
-            input_tensor = self.preprocess(input_image)
-
-            ort_inputs = {self.ort_session.get_inputs()[0].name: input_tensor}
-            ort_outs = self.ort_session.run(None, ort_inputs)
-            scores = ort_outs[0][0]
-
-            # Softmax
-            exp_scores = np.exp(scores - np.max(scores))
-            probabilities = exp_scores / exp_scores.sum()
-
+            image = Image.open(str(image_path)).convert("RGB")
+            
+            # Prepare inputs
+            inputs = self.processor(
+                text=self.text_prompts, 
+                images=image, 
+                return_tensors="pt", 
+                padding=True
+            ).to(self.device)
+            
+            # Forward pass
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                
+            # Get image-text similarity score
+            logits_per_image = outputs.logits_per_image # this is the image-text similarity score
+            probs = logits_per_image.softmax(dim=1).cpu().numpy()[0]
+            
             # Top K indices
-            top_indices = np.argsort(probabilities)[-top_k:][::-1]
-            return [self.categories[i] for i in top_indices if i < len(self.categories)]
+            top_indices = probs.argsort()[-top_k:][::-1]
+            return [self.categories[i] for i in top_indices]
+            
         except Exception as e:
             log.error(f"Tag extraction failed for {image_path}: {e}")
             return ["error"]
+
+
+def _run_ai_process(cmd_q, res_q, blur_threshold):
+    """
+    Multiprocessing target function. This runs in a completely separate Python 
+    process to isolate PyTorch/Transformers DLLs from the PyQt6 main thread.
+    """
+    def on_progress(msg):
+        res_q.put(("progress", msg))
+        
+    try:
+        engine = VisionEngine(blur_threshold=blur_threshold, progress_callback=on_progress)
+        res_q.put(("init_done", True))
+    except Exception as e:
+        res_q.put(("init_done", e))
+        return
+        
+    while True:
+        try:
+            cmd = cmd_q.get()
+            if cmd is None:
+                break
+            
+            action = cmd[0]
+            if action == "blur":
+                file_path = cmd[1]
+                res = engine.is_blurry(file_path)
+                res_q.put((action, res))
+            elif action == "tag":
+                file_path, top_k = cmd[1], cmd[2]
+                res = engine.get_tags(file_path, top_k=top_k)
+                res_q.put((action, res))
+        except Exception as e:
+            res_q.put(("error", e))

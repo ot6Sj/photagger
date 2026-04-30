@@ -10,7 +10,7 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from .vision_engine import VisionEngine
+import multiprocessing as mp
 from .face_detector import FaceDetector
 from .duplicate_detector import DuplicateDetector
 from .xmp_generator import generate_xmp
@@ -25,12 +25,55 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 log = get_logger("watcher")
 
+class AIProxy:
+    """Proxy class that runs the real VisionEngine in an isolated process."""
+    def __init__(self, blur_threshold, signals):
+        from .vision_engine import _run_ai_process
+        self.cmd_q = mp.Queue()
+        self.res_q = mp.Queue()
+        self.signals = signals
+        self.p = mp.Process(target=_run_ai_process, args=(self.cmd_q, self.res_q, blur_threshold), daemon=True)
+        self.p.start()
+        
+        # Wait for init
+        while True:
+            msg_type, payload = self.res_q.get()
+            if msg_type == "progress":
+                self.signals.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] {payload}")
+            elif msg_type == "init_done":
+                if isinstance(payload, Exception):
+                    raise payload
+                self.is_ready = payload
+                break
+
+    def is_blurry(self, file_path):
+        self.cmd_q.put(("blur", file_path))
+        while True:
+            msg_type, payload = self.res_q.get()
+            if msg_type == "blur":
+                return payload
+            elif msg_type == "progress":
+                self.signals.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] {payload}")
+                
+    def get_tags(self, file_path, top_k=3):
+        self.cmd_q.put(("tag", file_path, top_k))
+        while True:
+            msg_type, payload = self.res_q.get()
+            if msg_type == "tag":
+                return payload
+            elif msg_type == "progress":
+                self.signals.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] {payload}")
+                
+    def stop(self):
+        self.cmd_q.put(None)
+        self.p.join(timeout=5)
+
 
 class NewPhotoHandler(FileSystemEventHandler):
     """Handles new file events from the watchdog observer."""
 
     def __init__(self, processing_dir: Path, rejected_dir: Path,
-                 signals, vision_engine: VisionEngine,
+                 signals, ai_proxy: AIProxy,
                  history_db: HistoryDB, session_id: str,
                  face_detector: FaceDetector,
                  auto_categorize: bool = True, top_k: int = 3):
@@ -38,7 +81,7 @@ class NewPhotoHandler(FileSystemEventHandler):
         self.processing_dir = Path(processing_dir)
         self.rejected_dir = Path(rejected_dir)
         self.signals = signals
-        self.ai = vision_engine
+        self.ai = ai_proxy
         self.face_detector = face_detector
         self.dup_detector = DuplicateDetector()
         self.history = history_db
@@ -144,7 +187,7 @@ class NewPhotoHandler(FileSystemEventHandler):
 
         # ─── AI Semantic Tagging ─────────────────────────────
         self.signals.stage_update.emit("Extracting semantic tags...")
-        self._log(f"[AI] MobileNetV2 inference...")
+        self._log(f"[AI] CLIP inference...")
         raw_tags = self.ai.get_tags(file_path, top_k=self.top_k)
         self._log(f"[TAGS] {', '.join(raw_tags)}")
         self.signals.progress_update.emit(75)
@@ -310,9 +353,9 @@ class EngineWorker(QThread):
             self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
         try:
-            ai_engine = VisionEngine(
+            ai_proxy = AIProxy(
                 blur_threshold=self.blur_threshold,
-                progress_callback=on_progress
+                signals=self
             )
             face_detector = FaceDetector(
                 progress_callback=on_progress
@@ -322,7 +365,7 @@ class EngineWorker(QThread):
             self.status_update.emit("IDLE")
             return
 
-        if not ai_engine.is_ready:
+        if not getattr(ai_proxy, 'is_ready', False):
             self.log_msg.emit(f"[{time.strftime('%H:%M:%S')}] [WARN] AI engine in degraded mode (tagging disabled)")
 
         # Initialize history database
@@ -338,7 +381,7 @@ class EngineWorker(QThread):
 
         # Create event handler and observer
         handler = NewPhotoHandler(
-            proc_path, rej_path, self, ai_engine, history, session_id,
+            proc_path, rej_path, self, ai_proxy, history, session_id,
             face_detector=face_detector,
             auto_categorize=self.auto_categorize, top_k=self.top_k
         )
@@ -372,6 +415,12 @@ class EngineWorker(QThread):
         if self.observer:
             self.observer.stop()
             self.observer.join(timeout=5)
+            
+        try:
+            if hasattr(self, 'ai_proxy'):
+                self.ai_proxy.stop()
+        except:
+            pass
 
         # Finalize session
         try:
